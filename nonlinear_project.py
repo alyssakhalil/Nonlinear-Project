@@ -8,8 +8,8 @@ import veux
 
 model = ops.Model(ndm=3, ndf=6)
 
-# create nodes according to engineering drawings
 
+# create nodes according to engineering drawings
 height = 14.9375
 model.node(1, (  0.0,  0.0, 0.0))
 model.node(2, (  33.385416,  0.0, 0.0))
@@ -31,9 +31,9 @@ model.fix(1, (1, 1, 1, 1, 1, 1)) # to make it simply supported
 model.fix(6, (0, 1, 1, 1, 1, 1))
 
 for node in range(2, 5): # to prevent out of plane translation
-    model.fix(node, (0, 0, 1, 0, 0, 0))  
+    model.fix(node, (0, 0, 1, 1, 1, 1))  
 for node in range(7, 13):
-    model.fix(node, (0, 0, 1, 0, 0, 0))  
+    model.fix(node, (0, 0, 1, 1, 1, 1))  
 
 
 
@@ -116,7 +116,7 @@ l_bridge = 175 #ft
 bot_weight = bot_area * l_bridge * conc_weight
 top_weight = top_area * l_bridge * conc_weight
 total_weight = bot_weight + top_weight
-weight_node = total_weight/6
+weight_node = total_weight/6 
 
 loads = {
     1: [0, -weight_node, 0, 0, 0, 0],
@@ -156,9 +156,10 @@ print(model.nodeDisp(4))
 
 print("analysis done")
 
-'''
-# Render the model
+    # Render the model
 artist = veux.render(model, canvas="plotly")
-artist.draw_outlines(model.nodeDisp, scale=10.0)
+artist.draw_outlines(state=model.nodeDisp, scale=100.0)
 veux.serve(artist)
-'''
+artist = veux.render(model, model.nodeDisp, canvas="plotly")
+
+veux.serve(artist)
