@@ -27,13 +27,13 @@ model.node(13, (  174.885416,  height, 0.0))
 
 # supports
 
-model.fix(1, (1, 1, 1, 1, 1, 1)) # to make it simply supported
-model.fix(6, (0, 1, 1, 1, 1, 1))
+model.fix(1, (1, 1, 1, 1, 1, 0)) # to make it simply supported
+model.fix(6, (0, 1, 1, 1, 1, 0))
 
 for node in range(2, 5): # to prevent out of plane translation
-    model.fix(node, (0, 0, 1, 1, 1, 1))  
+    model.fix(node, (0, 0, 1, 1, 1, 0))  
 for node in range(7, 13):
-    model.fix(node, (0, 0, 1, 1, 1, 1))  
+    model.fix(node, (0, 0, 1, 1, 1, 0))  
 
 
 
