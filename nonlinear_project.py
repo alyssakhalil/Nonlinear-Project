@@ -1,11 +1,13 @@
 import opensees.openseespy as ops
 import veux
+import sys
+import xara
 
 
 # QUESTIONS / TO DO
     # check fixing truss elements
 
-
+ops.wipe()
 model = ops.Model(ndm=3, ndf=6)
 
 
@@ -30,9 +32,9 @@ model.node(13, (  174.885416,  height, 0.0))
 model.fix(1, (1, 1, 1, 1, 1, 0)) # to make it simply supported
 model.fix(6, (0, 1, 1, 1, 1, 0))
 
-for node in range(2, 5): # to prevent out of plane translation
+for node in range(2, 6): # to prevent out of plane translation
     model.fix(node, (0, 0, 1, 1, 1, 0))  
-for node in range(7, 13):
+for node in range(7, 14):
     model.fix(node, (0, 0, 1, 1, 1, 0))  
 
 
@@ -52,7 +54,8 @@ model.equalDOF(6,13,(1,2,3))
 
 
 # transforms
-model.geomTransf("Linear",1,(0,0,1))
+#model.geomTransf("Linear",1,(0,0,1))
+model.geomTransf("Corotational",1,(0,0,1))
 
 
 # DEFINING MATERIALS AND SECTIONS
@@ -144,7 +147,7 @@ for node, load in loads.items():
 # analysis
 
 model.system("BandGeneral")
-model.constraints("Plain")
+model.constraints("Transformation")
 model.numberer("RCM")
 model.algorithm("Linear")
 model.integrator("LoadControl", 1.0)
@@ -154,12 +157,59 @@ model.analyze(1)
 print(model.nodeDisp(3))
 print(model.nodeDisp(4))
 
-print("analysis done")
+# get forces
+
+for ele_id in range(1, 24): 
+    response = model.eleResponse(ele_id, 'forces')
+    #print(f"Element {ele_id} response: {response}")
+
+axial_forces = {}
+# CAN DO THIS FOR OTHER FORCES TOO
+
+for ele_id in range(1, 24):  # Update as needed
+    response = model.eleResponse(ele_id, "localForce")
+    Fx_i = response[0]  # Axial at end I
+    Fx_j = response[6]  # Axial at end J
+    axial_forces[ele_id] = [Fx_i, Fx_j]
+
+
+
+
+'''
+
+
+artist = veux.create_artist(model, vertical=2)
+artist.draw_outlines()
+artist.draw_axes(extrude=True)
+artist.draw_nodes()
+veux.serve(artist)
+
+'''
+
+
+'''
+print("Element Forces:")
+for ele_id in range(1, 24):  # Assuming elements are numbered 1 to 23
+    forces = model.eleForce(ele_id)
+    print(f"Element {ele_id}: {forces}")
+
+
 
     # Render the model
 artist = veux.render(model, canvas="plotly")
 artist.draw_outlines(state=model.nodeDisp, scale=100.0)
+
+
+# Render internal axial forces
+
+
 veux.serve(artist)
+
+
+'''
+'''
+
 artist = veux.render(model, model.nodeDisp, canvas="plotly")
 
 veux.serve(artist)
+'''
