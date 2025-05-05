@@ -4,8 +4,15 @@ import sys
 import xara
 
 
-# QUESTIONS / TO DO
+# QUESTIONS / TO DO !!!!
     # check fixing truss elements
+    # refine loads
+    # am now getting a consistent displacement -- does this mean my structure is stable?
+    # also need to verify with SAP2000
+
+
+
+
 
 ops.wipe()
 model = ops.Model(ndm=3, ndf=6)
