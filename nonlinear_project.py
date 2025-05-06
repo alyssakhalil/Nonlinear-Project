@@ -1,17 +1,8 @@
+pip install -U opensees xara veux
+
 import opensees.openseespy as ops
 import veux
 import sys
-import xara
-
-
-# QUESTIONS / TO DO !!!!
-    # check fixing truss elements
-    # refine loads
-    # am now getting a consistent displacement -- does this mean my structure is stable?
-    # also need to verify with SAP2000
-
-
-
 
 
 ops.wipe()
@@ -40,30 +31,15 @@ model.fix(1, (1, 1, 1, 1, 1, 0)) # to make it simply supported
 model.fix(6, (0, 1, 1, 1, 1, 0))
 
 for node in range(2, 6): # to prevent out of plane translation
+    print(node)
     model.fix(node, (0, 0, 1, 1, 1, 0))  
 for node in range(7, 14):
+    print(node)
     model.fix(node, (0, 0, 1, 1, 1, 0))  
-
-
-
-# element constraints -- these would make it move as a rigid body 
-'''
-for i in range(1,12):
-    model.equalDOF(i,i+1,(1,2,3))
-
-for i in range(1,5):
-    model.equalDOF(i,7+1,(1,2,3))
-    model.equalDOF(7+i,i+1,(1,2,3))
-
-model.equalDOF(1,7,(1,2,3))
-model.equalDOF(6,13,(1,2,3))
-'''
 
 
 # transforms
-#model.geomTransf("Linear",1,(0,0,1))
-model.geomTransf("Corotational",1,(0,0,1))
-
+model.geomTransf("Linear",1,(0,0,1))
 
 # DEFINING MATERIALS AND SECTIONS
 # units: kips and ft
@@ -81,13 +57,13 @@ side_area = diag_area
 # sections
 E_conc = 4694.4 #k/ft^2 -- this is for 6.9 ksi concrete
 G_conc = 2044.8 #k/ft^2
-model.section("ElasticFrame", 1, E=E_conc, G=G_conc, A=bot_area, 
+model.section("ElasticFrame", 1, E=E_conc, G=G_conc, A=bot_area, # bottom element 
               Iy=(bot_b**3*bot_h)/12, Iz=(bot_b*bot_h**3)/12, J=(bot_b**3*bot_h)/12 + (bot_b*bot_h**3)/12)
-model.section("ElasticFrame", 2, E=E_conc, G=G_conc, A=top_area, 
+model.section("ElasticFrame", 2, E=E_conc, G=G_conc, A=top_area, # top element
               Iy=(1*16**3)/12, Iz=(1**3*16)/12, J=(1*16**3)/12 + (1**3*16)/12)
-model.section("ElasticFrame", 3, E=E_conc, G=G_conc, A=diag_area, 
+model.section("ElasticFrame", 3, E=E_conc, G=G_conc, A=diag_area, # diagonal element
               Iy=(diag_b**3*diag_h)/12, Iz=(diag_b*diag_h**3)/12, J=(diag_b**3*diag_h)/12 + (diag_b*diag_h**3)/12)
-model.section("ElasticFrame", 4, E=E_conc, G=G_conc, A=side_area, 
+model.section("ElasticFrame", 4, E=E_conc, G=G_conc, A=side_area, # side element
               Iy=(diag_b**3*diag_h)/12, Iz=(diag_b*diag_h**3)/12, J=(diag_b**3*diag_h)/12 + (diag_b*diag_h**3)/12)
 
 # elements
@@ -126,7 +102,8 @@ l_bridge = 175 #ft
 bot_weight = bot_area * l_bridge * conc_weight
 top_weight = top_area * l_bridge * conc_weight
 total_weight = bot_weight + top_weight
-weight_node = total_weight/6 
+weight_node = total_weight/6
+print("weight node = ", weight_node)
 
 loads = {
     1: [0, -weight_node, 0, 0, 0, 0],
@@ -148,21 +125,23 @@ loads = {
 
 model.pattern("Plain", 1, "Constant")
 for node, load in loads.items():
+    print("node = ", node, " load = ", load)
     model.load(node, *load) 
 
 
 # analysis
 
 model.system("BandGeneral")
-model.constraints("Transformation")
+#model.constraints("Transformation")
 model.numberer("RCM")
 model.algorithm("Linear")
 model.integrator("LoadControl", 1.0)
 model.analysis("Static")
 model.analyze(1)
 
-print(model.nodeDisp(3))
-print(model.nodeDisp(4))
+
+for node in range(1,14):
+    print("node: ", node, " disp: ", model.nodeDisp(node))
 
 # get forces
 
@@ -171,52 +150,76 @@ for ele_id in range(1, 24):
     #print(f"Element {ele_id} response: {response}")
 
 axial_forces = {}
-# CAN DO THIS FOR OTHER FORCES TOO
+shear_forces = {}
+z_forces = {}
+Mx = {}
+My = {}
+Mz = {}
+
 
 for ele_id in range(1, 24):  # Update as needed
     response = model.eleResponse(ele_id, "localForce")
     Fx_i = response[0]  # Axial at end I
+    Fy_i = response[1]
+    Fz_i = response[2]
+    Mx_i = response[3]
+    My_i = response[4]
+    Mz_i = response[5]
+
     Fx_j = response[6]  # Axial at end J
+    Fy_j = response[7]
+    Fz_j = response[8]
+    Mx_j = response[9]
+    My_j = response[10]
+    Mz_j = response[11]
+
     axial_forces[ele_id] = [Fx_i, Fx_j]
+    shear_forces[ele_id] = [Fy_i, Fy_j]
+    z_forces[ele_id] = [Fz_i, Fz_j]
+    Mx[ele_id] = [Mx_i, Mx_j]
+    My[ele_id] = [My_i, My_j]
+    Mz[ele_id] = [Mz_i, Mz_j]
 
 
+import csv
 
+# File to write
+csv_file = "element_forces.csv"
 
-'''
+with open(csv_file, mode='w', newline='') as file:
+    writer = csv.writer(file)
 
+    # Write header
+    writer.writerow(["Element", "End", "Fx", "Fy", "Fz", "Mx", "My", "Mz"])
+
+    for ele_id in range(1, 24):  # Elements 1 to 23
+        writer.writerow([
+            ele_id, "I",
+            axial_forces[ele_id][0],
+            shear_forces[ele_id][0],
+            z_forces[ele_id][0],
+            Mx[ele_id][0],
+            My[ele_id][0],
+            Mz[ele_id][0]
+        ])
+        writer.writerow([
+            "", "J",
+            axial_forces[ele_id][1],
+            shear_forces[ele_id][1],
+            z_forces[ele_id][1],
+            Mx[ele_id][1],
+            My[ele_id][1],
+            Mz[ele_id][1]
+        ])
+
+print(f"Force table written to {csv_file}")
+
+print("starting veux")
 
 artist = veux.create_artist(model, vertical=2)
 artist.draw_outlines()
-artist.draw_axes(extrude=True)
+artist.draw_outlines(state=model.nodeDisp, scale=5)
+#artist.draw_axes(extrude=True)
 artist.draw_nodes()
 veux.serve(artist)
 
-'''
-
-
-'''
-print("Element Forces:")
-for ele_id in range(1, 24):  # Assuming elements are numbered 1 to 23
-    forces = model.eleForce(ele_id)
-    print(f"Element {ele_id}: {forces}")
-
-
-
-    # Render the model
-artist = veux.render(model, canvas="plotly")
-artist.draw_outlines(state=model.nodeDisp, scale=100.0)
-
-
-# Render internal axial forces
-
-
-veux.serve(artist)
-
-
-'''
-'''
-
-artist = veux.render(model, model.nodeDisp, canvas="plotly")
-
-veux.serve(artist)
-'''
